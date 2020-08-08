@@ -1,4 +1,4 @@
-__pycharm__/
+__pycache__/
 .idea
 env
 dados.json
