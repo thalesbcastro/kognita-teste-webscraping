@@ -6,13 +6,13 @@ from flask import Flask, jsonify
 app = Flask(__name__)
 
 
-@app.route('/api/create/<name>', methods=['GET'])
-def de_json(name):
+@app.route('/api/create/<name>/<int:num>', methods=['GET'])
+def de_json(name, num):
     try:
-        search(name)
+        search(name, num)
         return "<h3>Arquivo dados.json foi criado com sucesso na raiz do projeto!</h3>"
     except Exception as e:
-        return f"<h3><b>Descupe! Algo não de muito certo {e}</b></h3>"
+        return f"<h3><b>Descupe! Algo não deu muito certo {e}</b></h3>"
 
 
 @app.route('/api/get/<autor>', methods=['GET'])

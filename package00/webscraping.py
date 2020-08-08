@@ -5,7 +5,6 @@ import requests
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://stackoverflow.com/search?page={0}&tab=Relevance&q={1}"
-URL = "http://stackoverflow.com/search?q=%s"
 
 
 def search(word, pages):

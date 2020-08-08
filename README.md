@@ -6,7 +6,7 @@ pip install -r requirements.txt
 ```
 
 O pacote **package01** contém a versão mais atual do programa (main_webscraping.py) e que será chamado pelo arquivo principal da aplicação 
-_Flask_. Nele é disponibilizado apenas a função **search** como pode ser verificado no arquivo ```__init__.py``` desse pacote. Já, o **diretório** 
+_Flask_, o _main.py_. Nele (package01) é disponibilizada apenas a função **search** como pode ser verificado no arquivo ```__init__.py``` desse pacote. Já, o **diretório** 
 package00 contém a versão mais antiga (webscraping.py) como será explicado posteriormente. Essa versão não está sendo usada pela API,
 mas pode ser testada passando para a função **search** a palavra a ser pesquisada, bem como a quantidade de páginas a serem retornadas, executando o arquivo normalmente:
 
@@ -17,13 +17,15 @@ python package00/webscraping.py
 Os parâmetros devem ser escritos dentro do arquivo:
 
 ```python
+# execução da função search na versão mais antiga, a webscraping.py, dentro de package00.
 if __name__ == '__main__':
     # Nome a ser pesquisado mais a quantidade de páginas a ser retornada
     search("nginx", 2)
 ```
 
-- Para a criação do arquivo, chamado, nesse projeto, de **dados.json**, optou-se por criá-lo através da url ```127.0.0.1:5000/api/create/nome_a_ser_pesquisado```. Desse modo, para criar 
-o arquivo, com a aplicação rodando localmente, deve-se substituir **nome_a_ser_pesquisado** pela palavra que se deseja pesquisar.  
+- Para a criação do arquivo, chamado, nesse projeto, de **dados.json**, optou-se por criá-lo através da url ```127.0.0.1:5000/api/create/nome_a_ser_pesquisado/quantidade_de_paginas```. Desse modo, para criar 
+o arquivo, com a aplicação rodando localmente, deve-se substituir **nome_a_ser_pesquisado** pela palavra que se deseja pesquisar, bem como **quantidade_de_paginas** pelo número de páginas que
+o usuário quer que seja retornado.  
 
 - Para consultar os dados, foi criada uma aplicação _Flask_ simples que retorna um _jsonify_, caso o usuário a ser pesquisado contenha informações no arquivo criado anteriormente. há uma **Obs** no final desse arquivo 
 para um campo extra criado em comentários.
@@ -54,27 +56,17 @@ def search(word, pages):
     scraping(list_soup)
 ```  
 
-No entanto, foi verificado que essa **URL** não funciona para todas as pesquisas. Um exemplo de uso adequado dela é com 
+No entanto, foi verificado que essa **URL** não funciona para todas as pesquisas. Um exemplo de uso adequado dela é com a 
 palavra **nginx**, passando também a quantidade de páginas. Porém, passando a palavra **python**, outro comportamento pode 
-ser observado: a url formada a partir da página inicial se transforma em ```https://stackoverflow.com/questions/tagged/nome_a_ser_pesquisad0```, tornando,
+ser observado: a url formada a partir da página inicial se transforma em ```https://stackoverflow.com/questions/tagged/nome_a_ser_pesquisado```, tornando,
 desse modo, a versão anterior inválida. 
 
-Para isso, foi criada uma outra versão (main_webscraping.py) para esse comportamento, não passando o número de páginas e limitando sua quantidade 
-em 30, pois, por padrão, é retornado 50 resultados, sendo que cada página tem apenas 15, como pode ser observado no trecho de código a seguir:
+Para isso, foi criada uma outra versão (main_webscraping.py), muito semelhante a anterior, baseando-se na seguinte URL:
 ```python
-el_info = [
-        {  
-            "tipo": info.find("div", {"class": "user-action-time"}).get_text().strip(),
-            "data": info.find("div", {"class": "started"}).find('span')["title"],
-            "autor": info.find("div", {"class": "user-details"}).find("a").get_text().strip(),
-            "titulo": info.find("a", {"class": "question-hyperlink"}).get_text().strip(),
-            "texto": info.find("div", {"class": "excerpt"}).get_text().strip(),
-            "tags": info.find_all("a", {"class": "post-tag"})
-        }
-        for info in questions_summary[:30]  # Retornar apenas as 2 primeiras páginas
-    ]
+BASE_URL = "https://stackoverflow.com/questions/tagged/{0}?tab=newest&page={1}&pagesize=50"
 ```
-Nesse trecho, pode-se observar que os elementos são retornados apenas para as 30 primeiras questões (```questions_summary[:30]```).   
+Onde o **{0}** será substituído pelo nome passado na função **search** e 0 **{1}** pela quantidade de páginas que se quer retornar.
+Vale ressaltar que o tamanho de cada página, observando a url anterior, é limitado em 50 resultados, retornando, desse modo, 100 _posts_ para 2 páginas, por exemplo.
 
 #### Algumas observações
 - Para a primeira versão é mais fácil encontrar _posts_ com uma maior variedade (_asked_/_answered_);
@@ -84,9 +76,8 @@ pergunta ou de uma resposta:
 
 ```python
 def de_json(info):
-    perguntas, respostas, comentarios = [], [], []
-    for i in range(len(info)):
-        tipo = info[i]["tipo"].split()[0].strip()  # Ex: 'asked 58 mins ago'
+    # [...]
+        # [...]
         if tipo == 'asked':
             # [...]
             comentarios.append({
@@ -106,26 +97,27 @@ def de_json(info):
                         "data": info[i]["data"]}
                 )
         # [...]
+    # [...]
 ```
 
-- Uma coisa que não pode ser verificada foi a questão de expandir comentários, pois não consegui encontrar nenhum _post_
+- Uma coisa que não pôde ser verificada foi a questão de expandir comentários, pois não consegui encontrar nenhum _post_
 com esse comportamento.
 
 #### API Flask
 A "API" é uma simples aplicação em _Flask_ composta por duas funções:
-- A primeira função realiza a criação do arquivo _.json_, acessando a url ```127.0.0.1:5000/api/create/nome_a_ser_pesquisado```; 
+- A primeira função realiza a criação do arquivo _.json_, acessando a url ```127.0.0.1:5000/api/create/nome_a_ser_pesquisado/numero_paginas_retornadas```; 
 ```python
-@app.route('/api/create/<name>', methods=['GET'])
-def de_json(name):
+@app.route('/api/create/<name>/<int:num>', methods=['GET'])
+def de_json(name, num):
     try:
-        search(name)
+        search(name, num)
         return "<h3>Arquivo dados.json foi criado com sucesso na raiz do projeto!</h3>"
     except Exception as e:
-        return f"<h3><b>Descupe! Algo não de muito certo {e}</b></h3>"
+        return f"<h3><b>Descupe! Algo não deu muito certo: {e}</b></h3>"
 ```
 
-- A segunda, por sua vez, trata de retornar um _jsonify_, acessando  ```http://127.0.0.1:5000/api/get/<autor>```
-- Resposta esperada, avessando o _endpoint_ anterior:
+- A segunda, por sua vez, trata de retornar um _jsonify_, acessando  ```http://127.0.0.1:5000/api/get/<autor>/<numero_paginas>```
+- Resposta esperada, acessando o _endpoint_ anterior:
 ```json
 {
    "perguntas" : [],
@@ -153,3 +145,7 @@ def info_autor(autor):
         return jsonify(response="É preciso antes realizar a pesquisa para que o arquivo seja criado, usando a "
                                 "URL 127.0.0.1:5000/api/create/<name>")
 ``` 
+
+#### Resumindo:
+- Acessar ```127.0.0.1/api/create/nome_a_ser_pesquisado/quantidade_de_paginas``` para criar arquivo .json;
+- Acesar ```127.0.0.1/api/get/nome_autor``` para acessar os dados do autor.  
